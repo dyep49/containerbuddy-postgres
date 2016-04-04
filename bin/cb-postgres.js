@@ -1,9 +1,9 @@
 const os = require('os');
-const consulOptions = {promisify: true}
+const consulOptions = {host: 'consul', promisify: true}
 const consul = require('consul')(consulOptions);
 
-const primaryKey = 'postgres-master'
-const sessionName = 'service/postgres/leader'
+const primaryKey = 'postgres-master';
+const sessionName = 'service/postgres/leader';
 
 const createSession = function createSession(name) {
   console.log('creating session');
@@ -23,18 +23,37 @@ const acquireLock = function acquireLock(session) {
   return consul.kv.set(sessionName, JSON.stringify(node), {acquire: session.ID});
 }
 
-getSession(sessionName)
-  .then(function(response) {
-    console.log(response);
-    if(!response || response.Session === undefined) {
-      createSession(sessionName)
-        .then(acquireLock)
-        .then(function(response){
-          response === true ? console.log('I AM THE MASTER!!!!!!!!!!!') : console.log('I AM THE SLAVE :(((((((');
-        })
-        .catch(console.log)
-    } else {
-      console.log('found the session, thanks');
-    }
-  })
-  .catch(console.log) 
+const handleSession = function  handleSession(response) {
+  if(!response || response.Session === undefined) {
+    console.log('NO SESSION FOUND');
+    return createSession(sessionName)
+          .then(checkPrimary);
+  } else {
+    console.log('SESSION FOUND');
+    response.ID = response.Session;
+    return checkPrimary(response);
+  }
+}
+
+const checkPrimary = function checkPrimary(session) {
+  return acquireLock(session)
+        .then(isPrimary);
+}
+
+const isPrimary = function isPrimary(bool) {
+  const nodeType = bool === true ? 'master' : 'slave';
+  console.log('I am the', nodeType);
+}
+
+const discoverLeader = function discoverLeader(sessionName) {
+  getSession(sessionName)
+    .then(handleSession)
+    .catch(function(e) {
+      console.log(e);
+      setTimeout(function() {
+        discoverLeader(sessionName);
+      }, 5000)
+    }) 
+}
+
+discoverLeader(sessionName);

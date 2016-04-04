@@ -1,5 +1,6 @@
 {
   "consul": "consul:8500",
+  "preStart": "node /bin/cb-postgres.js",
   "services": [
     {
       "name": "postgres",
