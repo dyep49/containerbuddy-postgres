@@ -1,0 +1,19 @@
+{
+  "consul": "consul:8500",
+  "services": [
+    {
+      "name": "postgres",
+      "port": 5432,
+      "health": ["echo", "hello"],
+      "poll": 5,
+      "ttl": 25
+    }
+  ],
+  "backends": [
+    {
+      "name": "postgres-master",
+      "poll": 10,
+      "onChange": ["echo", "change"]
+    }
+  ]
+}
